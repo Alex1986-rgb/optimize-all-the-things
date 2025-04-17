@@ -22,7 +22,8 @@ export const simulatedData = {
 // Function to determine if running in Electron environment
 export const checkIsElectron = (): boolean => {
   try {
-    return window && window.process && window.process.type === 'renderer' || !!window.electronAPI;
+    // Fix the type error by checking window.process existence without accessing 'type'
+    return window && window.process && 'electron' in process.versions || !!window.electronAPI;
   } catch (e) {
     console.warn('Error checking Electron environment:', e);
     return false;
@@ -73,7 +74,10 @@ export const formatFileSize = (bytes: number): string => {
 export const getAppVersion = (): string => {
   if (checkIsElectron() && window.electronAPI) {
     try {
-      return window.electronAPI.getAppVersion() || '1.0.0';
+      // Check if getAppVersion exists on window.electronAPI before calling it
+      if ('getAppVersion' in window.electronAPI) {
+        return window.electronAPI.getAppVersion() || '1.0.0';
+      }
     } catch (e) {
       console.warn('Error getting app version:', e);
     }
