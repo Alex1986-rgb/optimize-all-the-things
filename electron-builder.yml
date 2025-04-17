@@ -1,0 +1,44 @@
+
+appId: "com.winoptimizer.app"
+productName: "Windows Optimizer Pro"
+copyright: "Copyright © 2025 Windows Optimizer Pro"
+
+directories:
+  output: "release"
+  buildResources: "resources"
+
+files:
+  - "dist/**/*"
+  - "electron/**/*"
+  - "preload.js"
+  - "electron.js"
+  - "package.json"
+
+extraResources:
+  - "resources/**/*"
+
+win:
+  target:
+    - "nsis"
+  icon: "resources/icon.ico"
+  publisherName: "Kyrlan Alexandr"
+
+nsis:
+  oneClick: false
+  perMachine: true
+  allowToChangeInstallationDirectory: true
+  shortcutName: "Windows Optimizer Pro"
+  uninstallDisplayName: "Windows Optimizer Pro"
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  runAfterFinish: true
+  installerIcon: "resources/icon.ico"
+  uninstallerIcon: "resources/icon.ico"
+  installerSidebar: "resources/installerSidebar.bmp"
+  artifactName: "Windows-Optimizer-Pro-Setup-${version}.${ext}"
+
+publish:
+  provider: "github"
+  owner: "kyrlanalexandr"
+  repo: "windows-optimizer-pro"
+  releaseType: "release"

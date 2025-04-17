@@ -1,5 +1,6 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
+const { app } = require('electron');
 
 // Экспортируем API в глобальный объект window
 contextBridge.exposeInMainWorld('electronAPI', {
@@ -21,5 +22,24 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onAdminRightsWarning: (callback) => {
     ipcRenderer.on('admin-rights-warning', (_, data) => callback(data));
     return () => ipcRenderer.removeAllListeners('admin-rights-warning');
-  }
+  },
+  
+  // Получение версии приложения
+  getAppVersion: () => {
+    try {
+      return ipcRenderer.invoke('get-app-version');
+    } catch (e) {
+      console.error('Error getting app version:', e);
+      return '1.0.0';
+    }
+  },
+  
+  // Открыть файл лога
+  showLogs: () => ipcRenderer.invoke('show-logs'),
+  
+  // Настройка автозапуска
+  setAutostart: (enabled) => ipcRenderer.invoke('set-autostart', enabled),
+  
+  // Проверить обновления
+  checkForUpdates: () => ipcRenderer.invoke('check-for-updates')
 });

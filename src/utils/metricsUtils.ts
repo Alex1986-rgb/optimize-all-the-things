@@ -22,7 +22,7 @@ export const simulatedData = {
 // Function to determine if running in Electron environment
 export const checkIsElectron = (): boolean => {
   try {
-    return !!window.electronAPI;
+    return window && window.process && window.process.type === 'renderer' || !!window.electronAPI;
   } catch (e) {
     console.warn('Error checking Electron environment:', e);
     return false;
@@ -61,3 +61,22 @@ export const calculateImprovement = (
   return { improvement, improved };
 };
 
+// Helper to format file sizes
+export const formatFileSize = (bytes: number): string => {
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+  if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+};
+
+// Get application version
+export const getAppVersion = (): string => {
+  if (checkIsElectron() && window.electronAPI) {
+    try {
+      return window.electronAPI.getAppVersion() || '1.0.0';
+    } catch (e) {
+      console.warn('Error getting app version:', e);
+    }
+  }
+  return '1.0.0'; // Fallback version
+};

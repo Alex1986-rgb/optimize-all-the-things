@@ -5,6 +5,7 @@ const url = require('url');
 const log = require('electron-log');
 const { exec } = require('child_process');
 const fs = require('fs');
+const { autoUpdater } = require('electron-updater');
 const { startMetricsCollection, stopMetricsCollection, collectInitialMetrics } = require('./metrics');
 const { setupOptimizationHandlers } = require('./optimization');
 
@@ -21,7 +22,7 @@ let isQuitting = false;
 // Информация о приложении
 const appInfo = {
   name: 'Windows Optimizer Pro',
-  version: '1.2.3',
+  version: app.getVersion(),
   author: 'Kyrlan Alexandr',
   sponsor: 'MyArredo',
   copyright: '©2025 Все права защищены'
@@ -47,15 +48,15 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      preload: path.join(__dirname, '../preload.js')
+      preload: path.join(__dirname, '../../preload.js')
     },
-    icon: path.join(__dirname, '../public/favicon.ico'),
+    icon: path.join(__dirname, '../../resources/icon.ico'),
     show: false, // Не показываем окно пока оно не будет готово
     backgroundColor: '#111827' // Темный фон для плавной загрузки
   });
 
   const startUrl = process.env.ELECTRON_START_URL || url.format({
-    pathname: path.join(__dirname, '../dist/index.html'),
+    pathname: path.join(__dirname, '../../dist/index.html'),
     protocol: 'file:',
     slashes: true
   });
@@ -107,6 +108,26 @@ function createWindow() {
   mainWindow.on('closed', function () {
     mainWindow = null;
   });
+  
+  // Настройка обработчика обновлений
+  autoUpdater.on('update-available', () => {
+    mainWindow.webContents.send('update-available');
+  });
+  
+  autoUpdater.on('update-downloaded', () => {
+    mainWindow.webContents.send('update-downloaded');
+    
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Доступно обновление',
+      message: 'Новая версия Windows Optimizer Pro была загружена. Перезапустить приложение для установки обновления?',
+      buttons: ['Перезапустить', 'Позже']
+    }).then((returnValue) => {
+      if (returnValue.response === 0) {
+        autoUpdater.quitAndInstall();
+      }
+    });
+  });
 }
 
 // Перезапуск приложения с правами администратора
@@ -125,7 +146,7 @@ function restartAsAdmin() {
 
 // Создаем системный трей
 function createTray() {
-  tray = new Tray(path.join(__dirname, '../public/favicon.ico'));
+  tray = new Tray(path.join(__dirname, '../../resources/icon.ico'));
   
   const contextMenu = Menu.buildFromTemplate([
     { label: `${appInfo.name} v${appInfo.version}`, enabled: false },
@@ -158,13 +179,48 @@ function showLogs() {
 
 // Проверка обновлений
 function checkForUpdates() {
-  dialog.showMessageBox({
-    type: 'info',
-    title: 'Обновления',
-    message: 'Проверка обновлений',
-    detail: 'Ваша версия программы актуальна.\nWindows Optimizer Pro v' + appInfo.version,
-    buttons: ['OK']
+  autoUpdater.checkForUpdatesAndNotify().then(() => {
+    dialog.showMessageBox({
+      type: 'info',
+      title: 'Обновления',
+      message: 'Проверка обновлений',
+      detail: 'Ваша версия программы актуальна.\nWindows Optimizer Pro v' + appInfo.version,
+      buttons: ['OK']
+    });
+  }).catch(err => {
+    log.error('Ошибка при проверке обновлений:', err);
+    dialog.showMessageBox({
+      type: 'error',
+      title: 'Ошибка обновления',
+      message: 'Ошибка при проверке обновлений',
+      detail: err.message,
+      buttons: ['OK']
+    });
   });
+}
+
+// Установка/удаление автозагрузки
+function setAutostart(enabled) {
+  const appPath = app.getPath('exe');
+  const regKey = 'HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run';
+  
+  if (enabled) {
+    exec(`reg add "${regKey}" /v "Windows Optimizer Pro" /t REG_SZ /d "${appPath}" /f`, (error) => {
+      if (error) {
+        log.error('Ошибка при добавлении в автозагрузку:', error);
+        return false;
+      }
+      return true;
+    });
+  } else {
+    exec(`reg delete "${regKey}" /v "Windows Optimizer Pro" /f`, (error) => {
+      if (error) {
+        log.error('Ошибка при удалении из автозагрузки:', error);
+        return false;
+      }
+      return true;
+    });
+  }
 }
 
 // Инициализация приложения
@@ -174,6 +230,12 @@ app.whenReady().then(() => {
   
   // Настраиваем обработчики оптимизации
   setupOptimizationHandlers(mainWindow, isAdmin, restartAsAdmin);
+  
+  // Настраиваем обработчики IPC
+  ipcMain.handle('get-app-version', () => app.getVersion());
+  ipcMain.handle('show-logs', showLogs);
+  ipcMain.handle('set-autostart', (_, enabled) => setAutostart(enabled));
+  ipcMain.handle('check-for-updates', checkForUpdates);
   
   app.on('activate', function () {
     if (mainWindow === null) createWindow();

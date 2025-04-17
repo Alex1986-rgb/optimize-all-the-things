@@ -12,14 +12,16 @@
 - Отключение ненужных служб Windows
 - Мониторинг производительности системы в реальном времени
 - Сравнение показателей до и после оптимизации
+- Автоматические обновления
+- Автозапуск при старте Windows (опционально)
 
 ## Установка и запуск
 
 ### Простая установка (Рекомендуется)
-1. [Скачайте последнюю версию](https://github.com/yourusername/windows-optimizer/releases/latest/download/windows-optimizer-setup.zip)
-2. Распакуйте архив в любую папку
-3. Запустите файл `Windows Optimizer.exe` от имени администратора
-4. Готово! Выберите параметры оптимизации и нажмите "Запустить"
+1. [Скачайте последнюю версию](https://github.com/kyrlanalexandr/windows-optimizer-pro/releases/latest/download/Windows-Optimizer-Pro-Setup.exe)
+2. Запустите установщик и следуйте инструкциям
+3. После установки запустите "Windows Optimizer Pro" с рабочего стола
+4. Выберите параметры оптимизации и нажмите "Запустить"
 
 **ВАЖНО**: Для корректной работы всех функций оптимизации приложение ОБЯЗАТЕЛЬНО должно запускаться с правами администратора.
 
@@ -52,7 +54,7 @@
 
 ```bash
 # Клонировать репозиторий
-git clone https://github.com/yourusername/windows-optimizer.git
+git clone https://github.com/kyrlanalexandr/windows-optimizer-pro.git
 
 # Установить зависимости
 npm install
@@ -60,7 +62,7 @@ npm install
 # Запустить в режиме разработки
 npm run dev:electron
 
-# Создать установщик
+# Создать инсталлятор
 npm run make
 ```
 
@@ -71,4 +73,3 @@ npm run make
 Создано при поддержке MyArredo https://www.myarredo.ru/
 
 © 2025 Windows Optimizer Pro. Все права защищены.
-
