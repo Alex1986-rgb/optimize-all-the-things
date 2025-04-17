@@ -25,14 +25,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   
   // Получение версии приложения
-  getAppVersion: () => {
-    try {
-      return ipcRenderer.invoke('get-app-version');
-    } catch (e) {
-      console.error('Error getting app version:', e);
-      return '1.0.0';
-    }
-  },
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
   
   // Открыть файл лога
   showLogs: () => ipcRenderer.invoke('show-logs'),

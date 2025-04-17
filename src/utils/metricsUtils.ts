@@ -1,3 +1,4 @@
+
 // Utility functions for metrics calculations and data handling
 
 // Симулированные данные для веб-среды
@@ -69,7 +70,7 @@ export const formatFileSize = (bytes: number): string => {
   return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
 };
 
-// Get application version
+// Get application version asynchronously
 export const getAppVersion = async (): Promise<string> => {
   if (checkIsElectron() && window.electronAPI) {
     try {
@@ -83,4 +84,9 @@ export const getAppVersion = async (): Promise<string> => {
     }
   }
   return '1.0.0'; // Fallback version
+};
+
+// Synchronous version for backwards compatibility
+export const getAppVersionSync = (): string => {
+  return '1.0.0'; // Fallback version for synchronous calls
 };

@@ -8,7 +8,7 @@ interface ElectronAPI {
   runOptimization: (settings: OptimizationSettings) => Promise<{ success: boolean; message: string, improvements?: any }>;
   onSystemMetrics: (callback: (data: SystemMetrics) => void) => () => void;
   onAdminRightsWarning: (callback: (data: any) => void) => () => void;
-  getAppVersion: () => string | Promise<string>;
+  getAppVersion: () => Promise<string>;
   showLogs: () => Promise<void>;
   setAutostart: (enabled: boolean) => Promise<boolean>;
   checkForUpdates: () => Promise<void>;
