@@ -68,7 +68,7 @@ npm run make
 
 Разработчик: Kyrlan Alexandr
 
-Создано при поддержке MyArredo
+Создано при поддержке MyArredo https://www.myarredo.ru/
 
 © 2025 Windows Optimizer Pro. Все права защищены.
 
