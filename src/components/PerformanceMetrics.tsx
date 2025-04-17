@@ -17,74 +17,150 @@ interface PerformanceMetricsProps {
   optimizationComplete?: boolean;
 }
 
+// Define the Electron API interface
+declare global {
+  interface Window {
+    electronAPI?: {
+      getCpuUsage: () => Promise<number>;
+      getMemoryUsage: () => Promise<number>;
+      getTemperature: () => Promise<number>;
+      getNetworkSpeed: () => Promise<number>;
+      runOptimization: (settings: Record<string, boolean>) => Promise<{success: boolean, message: string}>;
+    }
+  }
+}
+
 const PerformanceMetrics = ({ optimizationComplete = false }: PerformanceMetricsProps) => {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([
-    { name: "CPU", value: 65, icon: <Cpu size={20} />, color: "bg-red-500", unit: "%" },
-    { name: "Память", value: 48, icon: <Battery size={20} />, color: "bg-blue-500", unit: "%" },
-    { name: "Температура", value: 70, icon: <Thermometer size={20} />, color: "bg-amber-500", unit: "°C" },
-    { name: "Скорость сети", value: 32, icon: <Wifi size={20} />, color: "bg-green-500", unit: "Мбит/с" },
-    { name: "Производительность", value: 58, icon: <Gauge size={20} />, color: "bg-purple-500", unit: "%" }
+    { name: "CPU", value: 0, icon: <Cpu size={20} />, color: "bg-red-500", unit: "%" },
+    { name: "Память", value: 0, icon: <Battery size={20} />, color: "bg-blue-500", unit: "%" },
+    { name: "Температура", value: 0, icon: <Thermometer size={20} />, color: "bg-amber-500", unit: "°C" },
+    { name: "Скорость сети", value: 0, icon: <Wifi size={20} />, color: "bg-green-500", unit: "Мбит/с" },
+    { name: "Производительность", value: 0, icon: <Gauge size={20} />, color: "bg-purple-500", unit: "%" }
   ]);
   const { toast } = useToast();
+  const [isElectron, setIsElectron] = useState(false);
 
-  // В этой функции в будущем можно будет реализовать реальный мониторинг с помощью Node.js или Electron
-  const fetchRealPerformanceData = async () => {
-    // Заглушка для будущей реализации с реальными данными
-    console.log("Fetching real performance data...");
-    // В настоящей реализации здесь был бы код для получения реальных данных
-  };
+  useEffect(() => {
+    // Check if running in Electron environment
+    if (window.electronAPI) {
+      setIsElectron(true);
+      fetchSystemMetrics();
+      
+      // Set up interval to continuously update metrics
+      const intervalId = setInterval(fetchSystemMetrics, 2000);
+      
+      return () => clearInterval(intervalId);
+    } else {
+      console.log("Not running in Electron environment, using simulated data");
+      simulateMetrics();
+    }
+  }, []);
 
-  // Симуляция улучшения производительности после оптимизации
-  const simulateOptimization = () => {
-    const timer = setInterval(() => {
+  const fetchSystemMetrics = async () => {
+    if (!window.electronAPI) return;
+    
+    try {
+      // Fetch real metrics from Electron API
+      const cpuUsage = await window.electronAPI.getCpuUsage();
+      const memoryUsage = await window.electronAPI.getMemoryUsage();
+      const temperature = await window.electronAPI.getTemperature();
+      const networkSpeed = await window.electronAPI.getNetworkSpeed();
+      
+      // Calculate a performance score based on CPU and memory
+      const performanceScore = 100 - ((cpuUsage + memoryUsage) / 2);
+      
       setMetrics(prev => prev.map(metric => {
-        let improvement = 0;
         switch(metric.name) {
           case "CPU":
-            improvement = 25;
-            break;
+            return {...metric, value: parseFloat(cpuUsage.toFixed(1))};
           case "Память":
-            improvement = 15;
-            break;
+            return {...metric, value: parseFloat(memoryUsage.toFixed(1))};
           case "Температура":
-            improvement = -15; // Lower is better
-            break;
+            return {...metric, value: parseFloat(temperature.toFixed(1))};
           case "Скорость сети":
-            improvement = 40;
-            break;
+            return {...metric, value: parseFloat(networkSpeed.toFixed(1))};
           case "Производительность":
-            improvement = 30;
-            break;
+            return {...metric, value: parseFloat(performanceScore.toFixed(1))};
+          default:
+            return metric;
+        }
+      }));
+    } catch (error) {
+      console.error("Error fetching system metrics:", error);
+    }
+  };
+
+  // Simulate metrics for web/dev environment
+  const simulateMetrics = () => {
+    const timer = setInterval(() => {
+      setMetrics(prev => prev.map(metric => {
+        let value = Math.random() * 100;
+        
+        // Temperature should be between 35-90
+        if (metric.name === "Температура") {
+          value = 35 + Math.random() * 55;
         }
         
-        // For temperature, we want to decrease the value
-        const newValue = metric.name === "Температура"
-          ? Math.max(35, metric.value - improvement * Math.random())
-          : Math.min(98, metric.value + improvement * Math.random());
-          
+        // Network speed between 1-100 Mbps
+        if (metric.name === "Скорость сети") {
+          value = 1 + Math.random() * 99;
+        }
+        
         return {
           ...metric,
-          value: Number(newValue.toFixed(1))
+          value: parseFloat(value.toFixed(1))
         };
       }));
-    }, 1500);
+    }, 2000);
 
     return () => clearInterval(timer);
   };
 
-  // Effect to run optimization simulation when optimizationComplete changes to true
+  // Effect for optimization simulation
   useEffect(() => {
-    if (optimizationComplete) {
+    if (optimizationComplete && !isElectron) {
       toast({
         title: "Оптимизация завершена",
         description: "Система отслеживает улучшение производительности",
       });
       
-      // В реальном приложении здесь можно было бы запустить fetchRealPerformanceData
-      const cleanup = simulateOptimization();
-      return cleanup;
+      const timer = setInterval(() => {
+        setMetrics(prev => prev.map(metric => {
+          let improvement = 0;
+          switch(metric.name) {
+            case "CPU":
+              improvement = 25;
+              break;
+            case "Память":
+              improvement = 15;
+              break;
+            case "Температура":
+              improvement = -15; // Lower is better
+              break;
+            case "Скорость сети":
+              improvement = 40;
+              break;
+            case "Производительность":
+              improvement = 30;
+              break;
+          }
+          
+          // For temperature, we want to decrease the value
+          const newValue = metric.name === "Температура"
+            ? Math.max(35, metric.value - improvement * Math.random())
+            : Math.min(98, metric.value + improvement * Math.random());
+            
+          return {
+            ...metric,
+            value: Number(newValue.toFixed(1))
+          };
+        }));
+      }, 1500);
+
+      return () => clearInterval(timer);
     }
-  }, [optimizationComplete, toast]);
+  }, [optimizationComplete, toast, isElectron]);
 
   return (
     <Card className="bg-gray-900 border-gray-700">
@@ -92,6 +168,7 @@ const PerformanceMetrics = ({ optimizationComplete = false }: PerformanceMetrics
         <CardTitle className="text-white flex items-center gap-2">
           <Gauge className="text-cyan-400" />
           Метрики производительности
+          {!isElectron && <span className="text-xs text-gray-400 ml-2">(симуляция)</span>}
         </CardTitle>
       </CardHeader>
       <CardContent>
