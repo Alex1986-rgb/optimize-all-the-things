@@ -40,7 +40,7 @@ export const calculateImprovement = (
   let improvement = 0;
   let improved = false;
   
-  if (before > 0) {
+  if (beforeValue > 0) {
     if (higher) {
       improvement = Math.round((currentValue - beforeValue) / beforeValue * 100);
       improved = improvement > 0;
