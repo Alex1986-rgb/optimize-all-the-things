@@ -27,7 +27,14 @@ const PerformanceMetrics = ({ optimizationComplete = false }: PerformanceMetrics
   ]);
   const { toast } = useToast();
 
-  // Simulate performance improvement after optimization
+  // В этой функции в будущем можно будет реализовать реальный мониторинг с помощью Node.js или Electron
+  const fetchRealPerformanceData = async () => {
+    // Заглушка для будущей реализации с реальными данными
+    console.log("Fetching real performance data...");
+    // В настоящей реализации здесь был бы код для получения реальных данных
+  };
+
+  // Симуляция улучшения производительности после оптимизации
   const simulateOptimization = () => {
     const timer = setInterval(() => {
       setMetrics(prev => prev.map(metric => {
@@ -73,6 +80,7 @@ const PerformanceMetrics = ({ optimizationComplete = false }: PerformanceMetrics
         description: "Система отслеживает улучшение производительности",
       });
       
+      // В реальном приложении здесь можно было бы запустить fetchRealPerformanceData
       const cleanup = simulateOptimization();
       return cleanup;
     }

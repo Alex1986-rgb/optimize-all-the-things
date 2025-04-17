@@ -1,73 +1,71 @@
-# Welcome to your Lovable project
 
-## Project info
+# Windows Optimizer
 
-**URL**: https://lovable.dev/projects/d169e9fc-b902-45a5-a5e6-196e7639734a
+Приложение для оптимизации Windows и мониторинга производительности компьютера.
 
-## How can I edit this code?
+## Возможности
 
-There are several ways of editing your application.
+- Оптимизация сетевых параметров
+- Отключение фоновой активности браузеров
+- Очистка кэша и временных файлов
+- Настройка приоритетов процессов
+- Отключение ненужных служб Windows
+- Мониторинг производительности системы
 
-**Use Lovable**
+## Установка для разработки
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/d169e9fc-b902-45a5-a5e6-196e7639734a) and start prompting.
+```bash
+# Клонировать репозиторий
+git clone https://github.com/ваш-пользователь/windows-optimizer.git
 
-Changes made via Lovable will be committed automatically to this repo.
+# Перейти в директорию проекта
+cd windows-optimizer
 
-**Use your preferred IDE**
+# Установить зависимости
+npm install
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
-
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
-
-Follow these steps:
-
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
-
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
-
-# Step 3: Install the necessary dependencies.
-npm i
-
-# Step 4: Start the development server with auto-reloading and an instant preview.
+# Запустить в режиме разработки
 npm run dev
 ```
 
-**Edit a file directly in GitHub**
+## Создание десктопного приложения
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+Для создания полноценного десктопного приложения с доступом к системным метрикам, потребуется использовать Electron.js:
 
-**Use GitHub Codespaces**
+1. Добавьте Electron в проект:
+```bash
+npm install electron electron-builder --save-dev
+```
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+2. Следуйте официальной документации Electron для настройки сборки: https://www.electronjs.org/docs/latest/tutorial/tutorial-first-app
 
-## What technologies are used for this project?
+## Доступ к системным метрикам
 
-This project is built with .
+Для работы с реальными системными метриками потребуются следующие модули:
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+- `systeminformation` - для сбора информации о CPU, RAM и других компонентах
+- `node-powershell` - для выполнения PowerShell команд на Windows
 
-## How can I deploy this project?
+```bash
+npm install systeminformation node-powershell
+```
 
-Simply open [Lovable](https://lovable.dev/projects/d169e9fc-b902-45a5-a5e6-196e7639734a) and click on Share -> Publish.
+## Сборка для распространения
 
-## Can I connect a custom domain to my Lovable project?
+```bash
+# Сборка для production
+npm run build
 
-Yes, you can!
+# Создание исполняемого файла (требуется настройка electron-builder)
+npm run dist
+```
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+## Важное примечание
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+Для полноценной работы и доступа к системным метрикам требуется десктопная версия приложения с правами администратора. Некоторые оптимизации системы могут потребовать повышенных привилегий.
+
+## Требования
+
+- Node.js 14+
+- Windows 10/11
+- Права администратора (для выполнения некоторых команд оптимизации)
