@@ -1,9 +1,10 @@
+
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Terminal from "@/components/Terminal";
 import PerformanceMetrics from "@/components/PerformanceMetrics";
 import OptimizationSettings from "@/components/OptimizationSettings";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -21,6 +22,10 @@ const Index = () => {
   const handleOptimizationComplete = () => {
     setOptimizationComplete(true);
   };
+
+  const handleOptimizationReset = () => {
+    setOptimizationComplete(false);
+  };
   
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-800 p-4 md:p-6">
@@ -34,7 +39,8 @@ const Index = () => {
             {isMounted && (
               <Terminal 
                 settings={optimizationSettings} 
-                onComplete={handleOptimizationComplete} 
+                onComplete={handleOptimizationComplete}
+                onReset={handleOptimizationReset}
               />
             )}
           </div>
@@ -56,7 +62,7 @@ const Index = () => {
                 </TabsTrigger>
               </TabsList>
               <TabsContent value="metrics" className="mt-4">
-                <PerformanceMetrics />
+                <PerformanceMetrics optimizationComplete={optimizationComplete} />
               </TabsContent>
               <TabsContent value="info" className="mt-4">
                 <div className="bg-gray-900 p-4 rounded border border-gray-800 text-gray-300 text-sm">

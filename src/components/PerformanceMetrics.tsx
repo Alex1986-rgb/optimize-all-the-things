@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Battery, Cpu, Wifi, Thermometer, Gauge } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 
 interface PerformanceMetric {
   name: string;
@@ -12,7 +13,11 @@ interface PerformanceMetric {
   unit: string;
 }
 
-const PerformanceMetrics = () => {
+interface PerformanceMetricsProps {
+  optimizationComplete?: boolean;
+}
+
+const PerformanceMetrics = ({ optimizationComplete = false }: PerformanceMetricsProps) => {
   const [metrics, setMetrics] = useState<PerformanceMetric[]>([
     { name: "CPU", value: 65, icon: <Cpu size={20} />, color: "bg-red-500", unit: "%" },
     { name: "Память", value: 48, icon: <Battery size={20} />, color: "bg-blue-500", unit: "%" },
@@ -20,6 +25,7 @@ const PerformanceMetrics = () => {
     { name: "Скорость сети", value: 32, icon: <Wifi size={20} />, color: "bg-green-500", unit: "Мбит/с" },
     { name: "Производительность", value: 58, icon: <Gauge size={20} />, color: "bg-purple-500", unit: "%" }
   ]);
+  const { toast } = useToast();
 
   // Simulate performance improvement after optimization
   const simulateOptimization = () => {
@@ -58,6 +64,19 @@ const PerformanceMetrics = () => {
 
     return () => clearInterval(timer);
   };
+
+  // Effect to run optimization simulation when optimizationComplete changes to true
+  useEffect(() => {
+    if (optimizationComplete) {
+      toast({
+        title: "Оптимизация завершена",
+        description: "Система отслеживает улучшение производительности",
+      });
+      
+      const cleanup = simulateOptimization();
+      return cleanup;
+    }
+  }, [optimizationComplete, toast]);
 
   return (
     <Card className="bg-gray-900 border-gray-700">

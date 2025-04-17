@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -64,9 +63,10 @@ const TerminalLine: React.FC<TerminalLineProps> = ({
 interface TerminalProps {
   onComplete?: () => void;
   settings?: Record<string, boolean>;
+  onReset?: () => void;
 }
 
-const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
+const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {}, onReset }) => {
   const [lines, setLines] = useState<TerminalLineProps[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [completed, setCompleted] = useState(false);
@@ -74,7 +74,6 @@ const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
   const terminalRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Default all settings to true if not specified
   const enabledSettings = {
     network: true,
     browsers: true,
@@ -147,14 +146,12 @@ const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
       { content: '🚀 Старт оптимизации Windows...', color: 'cyan' as const },
     ];
     
-    // Add commands based on enabled settings
     script.push(...getNetworkCommands());
     script.push(...getBrowserCommands());
     script.push(...getCleanupCommands());
     script.push(...getPriorityCommands());
     script.push(...getServicesCommands());
     
-    // Add final message
     script.push({ content: '✅ Оптимизация завершена! Перезагрузите компьютер для применения всех изменений.', color: 'green' as const });
     
     return script;
@@ -173,17 +170,14 @@ const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
         const line = script[currentLineIndex];
         setLines(prev => [...prev, line]);
         
-        // Update progress
         setProgress(Math.floor((currentLineIndex / script.length) * 100));
         
         currentLineIndex++;
         
-        // Random delay between lines to simulate real execution
         const delay = line.isCommand ? 800 : Math.random() * 400 + 100;
         
         setTimeout(() => {
           addLine();
-          // Scroll to bottom
           if (terminalRef.current) {
             terminalRef.current.scrollTop = terminalRef.current.scrollHeight;
           }
@@ -205,6 +199,11 @@ const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
     addLine();
   };
 
+  const handleRunAgain = () => {
+    if (onReset) onReset();
+    runScript();
+  };
+
   return (
     <div className="w-full flex flex-col gap-4">
       <div className="flex justify-between items-center">
@@ -219,7 +218,7 @@ const Terminal: React.FC<TerminalProps> = ({ onComplete, settings = {} }) => {
         </div>
         {completed && (
           <Button 
-            onClick={runScript}
+            onClick={handleRunAgain}
             variant="outline"
             size="sm"
             className="bg-blue-900 hover:bg-blue-800 border-blue-700 text-white"
