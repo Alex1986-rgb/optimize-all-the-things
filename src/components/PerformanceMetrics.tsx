@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { CircleDot, Cpu, Memory, Thermometer, Wifi, Activity } from 'lucide-react';
+import { CircleDot, Cpu, HardDrive, Thermometer, Wifi, Activity } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 interface PerformanceMetricsProps {
@@ -178,7 +178,7 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ optimizationCom
           metrics.memory, 
           beforeOptimization.memory, 
           'Использование памяти', 
-          <Memory size={20} />, 
+          <HardDrive size={20} />, 
           '%'
         )}
         
