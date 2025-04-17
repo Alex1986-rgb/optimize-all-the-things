@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Battery, Cpu, Wifi, Thermometer, Speedometer } from 'lucide-react';
+import { Battery, Cpu, Wifi, Thermometer, Gauge } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
@@ -18,7 +18,7 @@ const PerformanceMetrics = () => {
     { name: "Память", value: 48, icon: <Battery size={20} />, color: "bg-blue-500", unit: "%" },
     { name: "Температура", value: 70, icon: <Thermometer size={20} />, color: "bg-amber-500", unit: "°C" },
     { name: "Скорость сети", value: 32, icon: <Wifi size={20} />, color: "bg-green-500", unit: "Мбит/с" },
-    { name: "Производительность", value: 58, icon: <Speedometer size={20} />, color: "bg-purple-500", unit: "%" }
+    { name: "Производительность", value: 58, icon: <Gauge size={20} />, color: "bg-purple-500", unit: "%" }
   ]);
 
   // Simulate performance improvement after optimization
@@ -63,7 +63,7 @@ const PerformanceMetrics = () => {
     <Card className="bg-gray-900 border-gray-700">
       <CardHeader>
         <CardTitle className="text-white flex items-center gap-2">
-          <Speedometer className="text-cyan-400" />
+          <Gauge className="text-cyan-400" />
           Метрики производительности
         </CardTitle>
       </CardHeader>

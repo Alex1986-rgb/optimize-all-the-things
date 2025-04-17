@@ -1,10 +1,8 @@
-
 import { useState, useEffect } from "react";
 import Header from "@/components/Header";
 import Terminal from "@/components/Terminal";
 import PerformanceMetrics from "@/components/PerformanceMetrics";
 import OptimizationSettings from "@/components/OptimizationSettings";
-import { Toaster } from "@/hooks/use-toast";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 const Index = () => {
