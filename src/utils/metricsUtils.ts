@@ -24,8 +24,16 @@ export const checkIsElectron = (): boolean => {
   try {
     return !!window.electronAPI;
   } catch (e) {
+    console.warn('Error checking Electron environment:', e);
     return false;
   }
+};
+
+// Helper to safely parse numeric values
+const safeParseNumber = (value: number | string): number => {
+  if (typeof value === 'number') return value;
+  const parsed = parseFloat(value);
+  return isNaN(parsed) ? 0 : parsed;
 };
 
 // Helper to calculate improvement percentage
@@ -34,8 +42,8 @@ export const calculateImprovement = (
   before: number | string,
   higher: boolean = false
 ): { improvement: number; improved: boolean } => {
-  const currentValue = typeof current === 'string' ? parseFloat(current) : current;
-  const beforeValue = typeof before === 'string' ? parseFloat(before) : before;
+  const currentValue = safeParseNumber(current);
+  const beforeValue = safeParseNumber(before);
   
   let improvement = 0;
   let improved = false;
@@ -52,3 +60,4 @@ export const calculateImprovement = (
   
   return { improvement, improved };
 };
+
