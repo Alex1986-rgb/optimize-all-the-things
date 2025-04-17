@@ -1,12 +1,7 @@
 
 import React from 'react';
 import Terminal from './terminal/Terminal';
-
-interface TerminalProps {
-  settings: Record<string, boolean>;
-  onComplete: () => void;
-  onReset: () => void;
-}
+import { TerminalProps } from './terminal/types';
 
 // This is a wrapper component to maintain backward compatibility
 const TerminalWrapper: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) => {
