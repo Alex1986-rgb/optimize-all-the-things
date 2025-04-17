@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { simulatedData, checkIsElectron } from '@/utils/metricsUtils';
+import { simulatedData, checkIsElectron, getAppVersionSync } from '@/utils/metricsUtils';
 
 interface MetricsState {
   cpu: number;
