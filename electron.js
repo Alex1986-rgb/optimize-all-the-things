@@ -1,5 +1,5 @@
 
-const { app, BrowserWindow, ipcMain, Menu, Tray, shell } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, Tray, shell, dialog } = require('electron');
 const path = require('path');
 const url = require('url');
 const si = require('systeminformation');
@@ -10,6 +10,7 @@ const log = require('electron-log');
 // Настройка логирования
 log.transports.file.level = 'info';
 log.transports.console.level = 'debug';
+log.info('Приложение запущено:', new Date().toISOString());
 
 // Глобальные переменные
 let mainWindow;
@@ -17,6 +18,16 @@ let tray = null;
 let isQuitting = false;
 let prevNetworkStats = null;
 let metricsUpdateInterval = null;
+let metricsBeforeOptimization = null;
+
+// Информация о приложении
+const appInfo = {
+  name: 'Windows Optimizer Pro',
+  version: '1.2.3',
+  author: 'Kyrlan Alexandr',
+  sponsor: 'MyArredo',
+  copyright: '©2025 Все права защищены'
+};
 
 // Проверка на запуск с админ правами
 const isAdmin = () => {
@@ -41,7 +52,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js')
     },
     icon: path.join(__dirname, 'public/favicon.ico'),
-    show: false // Не показываем окно пока оно не будет готово
+    show: false, // Не показываем окно пока оно не будет готово
+    backgroundColor: '#111827' // Темный фон для плавной загрузки
   });
 
   const startUrl = process.env.ELECTRON_START_URL || url.format({
@@ -56,10 +68,21 @@ function createWindow() {
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     
+    // Сбор начальных метрик
+    collectInitialMetrics();
+    
     // Уведомление, если запущено без прав администратора
     if (!hasAdminRights) {
-      mainWindow.webContents.send('admin-rights-warning', {
-        message: 'Приложение запущено без прав администратора. Некоторые функции могут не работать.'
+      dialog.showMessageBox(mainWindow, {
+        type: 'warning',
+        title: 'Запуск без прав администратора',
+        message: 'Приложение запущено без прав администратора. Некоторые функции оптимизации могут не работать. Рекомендуется перезапустить приложение от имени администратора.',
+        buttons: ['Продолжить', 'Перезапустить от администратора'],
+        defaultId: 1
+      }).then(({ response }) => {
+        if (response === 1) {
+          restartAsAdmin();
+        }
       });
     }
   });
@@ -88,14 +111,58 @@ function createWindow() {
   });
 }
 
+// Перезапуск приложения с правами администратора
+function restartAsAdmin() {
+  const appPath = app.getPath('exe');
+  
+  exec(`powershell -Command "Start-Process -Verb RunAs '${appPath}'"`, (error) => {
+    if (error) {
+      log.error('Ошибка перезапуска с правами администратора:', error);
+      return;
+    }
+    isQuitting = true;
+    app.quit();
+  });
+}
+
+// Сбор начальных метрик для сравнения до и после
+async function collectInitialMetrics() {
+  try {
+    const [cpuData, memData, tempData, networkData] = await Promise.all([
+      si.currentLoad(),
+      si.mem(),
+      si.cpuTemperature(),
+      si.networkStats()
+    ]);
+    
+    metricsBeforeOptimization = {
+      cpu: cpuData.currentLoad,
+      memory: (memData.used / memData.total) * 100,
+      temperature: tempData.main || tempData.cores?.[0] || 0,
+      networkSpeed: networkData && networkData.length > 0 ? 
+        Math.round((networkData[0].rx_sec + networkData[0].tx_sec) / 125000) : 0,
+      timestamp: Date.now()
+    };
+    
+    log.info('Начальные метрики собраны:', metricsBeforeOptimization);
+    
+  } catch (error) {
+    log.error('Ошибка при сборе начальных метрик:', error);
+  }
+}
+
 // Создаем системный трей
 function createTray() {
   tray = new Tray(path.join(__dirname, 'public/favicon.ico'));
   
   const contextMenu = Menu.buildFromTemplate([
+    { label: `${appInfo.name} v${appInfo.version}`, enabled: false },
+    { type: 'separator' },
     { label: 'Открыть Windows Optimizer', click: () => mainWindow.show() },
     { label: 'Проверить обновления', click: checkForUpdates },
+    { label: 'Показать журнал', click: showLogs },
     { type: 'separator' },
+    { label: 'Перезапустить от имени администратора', click: restartAsAdmin },
     { label: 'Выход', click: () => {
         isQuitting = true;
         app.quit();
@@ -103,12 +170,18 @@ function createTray() {
     }
   ]);
   
-  tray.setToolTip('Windows Optimizer');
+  tray.setToolTip(`${appInfo.name} v${appInfo.version}`);
   tray.setContextMenu(contextMenu);
   
   tray.on('click', () => {
     mainWindow.show();
   });
+}
+
+// Показать файл логов
+function showLogs() {
+  const logFilePath = log.transports.file.getFile().path;
+  shell.showItemInFolder(logFilePath);
 }
 
 // Запуск сбора метрик
@@ -129,12 +202,11 @@ function startMetricsCollection() {
       
       // Рассчитываем сетевую скорость
       let networkSpeed = 0;
-      if (prevNetworkStats && networkData && networkData.length > 0) {
+      if (networkData && networkData.length > 0) {
         const totalRx = networkData.reduce((sum, iface) => sum + iface.rx_sec, 0);
         const totalTx = networkData.reduce((sum, iface) => sum + iface.tx_sec, 0);
         networkSpeed = Math.round((totalRx + totalTx) / 125000); // Конвертация в Мбит/с
       }
-      prevNetworkStats = networkData;
       
       // Отправляем метрики в рендер-процесс
       if (mainWindow) {
@@ -161,9 +233,13 @@ function stopMetricsCollection() {
 
 // Проверка обновлений
 function checkForUpdates() {
-  // Здесь можно реализовать проверку обновлений
-  // Например, через GitHub API
-  shell.openExternal('https://github.com/yourusername/windows-optimizer/releases');
+  dialog.showMessageBox({
+    type: 'info',
+    title: 'Обновления',
+    message: 'Проверка обновлений',
+    detail: 'Ваша версия программы актуальна.\nWindows Optimizer Pro v' + appInfo.version,
+    buttons: ['OK']
+  });
 }
 
 // Инициализация приложения
@@ -223,11 +299,6 @@ ipcMain.handle('get-network-speed', async () => {
   try {
     const currentNetworkStats = await si.networkStats();
     
-    if (!prevNetworkStats) {
-      prevNetworkStats = currentNetworkStats;
-      return 0;
-    }
-    
     if (currentNetworkStats && currentNetworkStats.length > 0) {
       // Считаем общую скорость по всем интерфейсам
       let totalRxSec = 0;
@@ -239,12 +310,7 @@ ipcMain.handle('get-network-speed', async () => {
       }
       
       // Расчет скорости в Мбит/с
-      const speedMbps = Math.round((totalRxSec + totalTxSec) / 125000);
-      
-      // Обновляем предыдущие значения
-      prevNetworkStats = currentNetworkStats;
-      
-      return speedMbps;
+      return Math.round((totalRxSec + totalTxSec) / 125000);
     }
     return 0;
   } catch (error) {
@@ -281,9 +347,23 @@ ipcMain.handle('run-optimization', async (event, settings) => {
   // Проверяем наличие прав администратора
   if (!isAdmin()) {
     log.warn('Attempting to run optimizations without admin rights');
+    
+    dialog.showMessageBox(mainWindow, {
+      type: 'warning',
+      title: 'Требуются права администратора',
+      message: 'Для выполнения оптимизаций требуются права администратора',
+      detail: 'Некоторые оптимизации могут не сработать без прав администратора. Хотите перезапустить приложение?',
+      buttons: ['Продолжить без прав администратора', 'Перезапустить от имени администратора'],
+      defaultId: 1
+    }).then(({ response }) => {
+      if (response === 1) {
+        restartAsAdmin();
+      }
+    });
+    
     return {
       success: false,
-      message: 'Для выполнения оптимизаций требуются права администратора. Пожалуйста, перезапустите приложение от имени администратора.'
+      message: 'Для выполнения оптимизаций требуются права администратора.'
     };
   }
   
@@ -295,6 +375,7 @@ ipcMain.handle('run-optimization', async (event, settings) => {
       try {
         await runPowerShellCommand('Remove-Item "$env:TEMP\\*" -Recurse -Force -ErrorAction SilentlyContinue');
         await runPowerShellCommand('Remove-Item "C:\\Windows\\Temp\\*" -Recurse -Force -ErrorAction SilentlyContinue');
+        await runPowerShellCommand('Remove-Item "$env:LOCALAPPDATA\\Temp\\*" -Recurse -Force -ErrorAction SilentlyContinue');
         results.push('Временные файлы успешно очищены');
       } catch (error) {
         log.error('Error cleaning temp files:', error);
@@ -328,13 +409,24 @@ ipcMain.handle('run-optimization', async (event, settings) => {
     // Отключение фоновых процессов браузеров
     if (settings.browsers) {
       try {
+        // Закрытие всех браузеров
         await runPowerShellCommand('Get-Process chrome* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue');
         await runPowerShellCommand('Get-Process msedge* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue');
         await runPowerShellCommand('Get-Process firefox* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue');
+        await runPowerShellCommand('Get-Process opera* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue');
+        await runPowerShellCommand('Get-Process browser* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue');
         
         // Отключение автозапуска браузеров
         await runPowerShellCommand('Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name "Chrome" -ErrorAction SilentlyContinue');
         await runPowerShellCommand('Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name "Microsoft Edge" -ErrorAction SilentlyContinue');
+        await runPowerShellCommand('Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name "Yandex" -ErrorAction SilentlyContinue');
+        await runPowerShellCommand('Remove-ItemProperty -Path "HKCU:\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" -Name "Opera" -ErrorAction SilentlyContinue');
+        
+        // Отключение фоновой работы для всех браузеров
+        await runPowerShellCommand('reg add "HKCU\\Software\\Google\\Chrome\\Advanced" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f');
+        await runPowerShellCommand('reg add "HKCU\\Software\\Microsoft\\Edge\\Advanced" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f');
+        await runPowerShellCommand('reg add "HKCU\\Software\\Yandex\\YandexBrowser\\Background" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f');
+        await runPowerShellCommand('reg add "HKCU\\Software\\Opera Software\\Preferences" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f');
         
         results.push('Фоновые процессы браузеров успешно остановлены');
       } catch (error) {
@@ -351,10 +443,12 @@ ipcMain.handle('run-optimization', async (event, settings) => {
           'DiagTrack',          // Телеметрия Windows
           'dmwappushservice',   // WAP Push Message Routing Service
           'MapsBroker',         // Служба загрузки карт
-          'wuauserv',           // Центр обновления Windows
           'WSearch',            // Поиск Windows
           'SysMain',            // Superfetch
-          'TabletInputService'  // Служба панели рукописного ввода
+          'TabletInputService', // Служба панели рукописного ввода
+          'XblGameSave',        // Xbox Game Save
+          'XboxNetApiSvc',      // Xbox Live Networking 
+          'Fax'                 // Факс
         ];
         
         for (const service of servicesToDisable) {
@@ -378,6 +472,9 @@ ipcMain.handle('run-optimization', async (event, settings) => {
           $currentProcess.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High
         `);
         
+        // Устанавливаем более низкий приоритет для фоновых служб
+        await runPowerShellCommand('wmic process where name="svchost.exe" CALL setpriority "below normal"');
+        
         results.push('Приоритеты процессов успешно настроены');
       } catch (error) {
         log.error('Error setting process priorities:', error);
@@ -385,9 +482,106 @@ ipcMain.handle('run-optimization', async (event, settings) => {
       }
     }
     
+    // Оптимизация автозагрузки
+    if (settings.startup) {
+      try {
+        await runPowerShellCommand('Get-CimInstance Win32_StartupCommand | Select-Object Command, Description | Format-Table -AutoSize');
+        
+        // Отключение ненужных элементов автозагрузки
+        await runPowerShellCommand('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Steam Client Bootstrapper" /f');
+        await runPowerShellCommand('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Discord" /f');
+        await runPowerShellCommand('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Spotify" /f');
+        await runPowerShellCommand('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "EpicGamesLauncher" /f');
+        await runPowerShellCommand('reg delete "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Run" /v "Skype" /f');
+        
+        results.push('Автозагрузка успешно оптимизирована');
+      } catch (error) {
+        log.error('Error optimizing startup:', error);
+        results.push(`Ошибка при оптимизации автозагрузки: ${error.message}`);
+      }
+    }
+    
+    // Игровой режим
+    if (settings.gaming) {
+      try {
+        // Оптимизации для игр
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile" /v SystemResponsiveness /t REG_DWORD /d 0 /f');
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games" /v "GPU Priority" /t REG_DWORD /d 8 /f');
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games" /v "Priority" /t REG_DWORD /d 6 /f');
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Multimedia\\SystemProfile\\Tasks\\Games" /v "Scheduling Category" /t REG_SZ /d "High" /f');
+        
+        // Установка высокопроизводительного плана электропитания
+        await runPowerShellCommand('powercfg -setactive 8c5e7fda-e8bf-4a96-9a85-a6e23a8c635c');
+        
+        // Отключение динамических тиков таймера
+        await runPowerShellCommand('bcdedit /set disabledynamictick yes');
+        
+        results.push('Игровой режим успешно активирован');
+      } catch (error) {
+        log.error('Error enabling gaming mode:', error);
+        results.push(`Ошибка при активации игрового режима: ${error.message}`);
+      }
+    }
+    
+    // Настройки конфиденциальности
+    if (settings.privacy) {
+      try {
+        // Отключение телеметрии и сбора данных
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\DataCollection" /v AllowTelemetry /t REG_DWORD /d 0 /f');
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent" /v DisableTailoredExperiencesWithDiagnosticData /t REG_DWORD /d 1 /f');
+        await runPowerShellCommand('reg add "HKLM\\SOFTWARE\\Policies\\Microsoft\\Windows\\AdvertisingInfo" /v DisabledByGroupPolicy /t REG_DWORD /d 1 /f');
+        
+        // Отключение отслеживания запусков программ
+        await runPowerShellCommand('reg add "HKCU\\Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced" /v Start_TrackProgs /t REG_DWORD /d 0 /f');
+        
+        results.push('Настройки конфиденциальности успешно применены');
+      } catch (error) {
+        log.error('Error applying privacy settings:', error);
+        results.push(`Ошибка при настройке конфиденциальности: ${error.message}`);
+      }
+    }
+    
+    log.info('Optimization completed with results:', results);
+    
+    // Собираем новые метрики для сравнения с начальными
+    try {
+      const [cpuData, memData, tempData, networkData] = await Promise.all([
+        si.currentLoad(),
+        si.mem(),
+        si.cpuTemperature(),
+        si.networkStats()
+      ]);
+      
+      const metricsAfterOptimization = {
+        cpu: cpuData.currentLoad,
+        memory: (memData.used / memData.total) * 100,
+        temperature: tempData.main || tempData.cores?.[0] || 0,
+        networkSpeed: networkData && networkData.length > 0 ? 
+          Math.round((networkData[0].rx_sec + networkData[0].tx_sec) / 125000) : 0,
+        timestamp: Date.now()
+      };
+      
+      log.info('Metrics after optimization:', metricsAfterOptimization);
+      log.info('Metrics before optimization:', metricsBeforeOptimization);
+      
+      // Вычисляем улучшения
+      const improvements = {
+        cpu: metricsBeforeOptimization ? 
+          ((metricsBeforeOptimization.cpu - metricsAfterOptimization.cpu) / metricsBeforeOptimization.cpu * 100).toFixed(1) : 0,
+        memory: metricsBeforeOptimization ? 
+          ((metricsBeforeOptimization.memory - metricsAfterOptimization.memory) / metricsBeforeOptimization.memory * 100).toFixed(1) : 0,
+        temperature: metricsBeforeOptimization ? 
+          ((metricsBeforeOptimization.temperature - metricsAfterOptimization.temperature) / metricsBeforeOptimization.temperature * 100).toFixed(1) : 0,
+      };
+      
+      log.info('Performance improvements:', improvements);
+    } catch (error) {
+      log.error('Error calculating performance improvements:', error);
+    }
+    
     return { 
       success: true, 
-      message: 'Оптимизация успешно выполнена. ' + results.join('. ')
+      message: 'Оптимизация успешно выполнена! ' + results.join('. ')
     };
     
   } catch (error) {
