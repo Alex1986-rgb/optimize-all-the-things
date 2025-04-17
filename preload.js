@@ -1,6 +1,5 @@
 
 const { contextBridge, ipcRenderer } = require('electron');
-const { app } = require('electron');
 
 // Экспортируем API в глобальный объект window
 contextBridge.exposeInMainWorld('electronAPI', {

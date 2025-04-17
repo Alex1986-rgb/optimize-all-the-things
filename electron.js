@@ -1,9 +1,7 @@
 
 // Главный файл Electron (точка входа)
-// Импортируем основные модули
 const { app } = require('electron');
 const { initMetrics } = require('./src/electron/metrics');
-const appModule = require('./src/electron/app');
 const { autoUpdater } = require('electron-updater');
 const log = require('electron-log');
 
@@ -22,6 +20,9 @@ app.whenReady().then(() => {
     autoUpdater.checkForUpdatesAndNotify();
   }
 });
+
+// Импортируем остальные функции из основного модуля приложения
+const appModule = require('./src/electron/app');
 
 // Экспорт для доступа в других частях приложения
 module.exports = {
