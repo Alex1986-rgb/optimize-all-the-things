@@ -1,4 +1,3 @@
-
 // Utility functions for metrics calculations and data handling
 
 // Симулированные данные для веб-среды
@@ -71,12 +70,13 @@ export const formatFileSize = (bytes: number): string => {
 };
 
 // Get application version
-export const getAppVersion = (): string => {
+export const getAppVersion = async (): Promise<string> => {
   if (checkIsElectron() && window.electronAPI) {
     try {
       // Check if getAppVersion exists on window.electronAPI before calling it
       if ('getAppVersion' in window.electronAPI) {
-        return window.electronAPI.getAppVersion() || '1.0.0';
+        const version = await window.electronAPI.getAppVersion();
+        return version || '1.0.0';
       }
     } catch (e) {
       console.warn('Error getting app version:', e);
