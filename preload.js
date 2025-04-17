@@ -10,5 +10,16 @@ contextBridge.exposeInMainWorld('electronAPI', {
   getNetworkSpeed: () => ipcRenderer.invoke('get-network-speed'),
   
   // Метод для запуска оптимизации
-  runOptimization: (settings) => ipcRenderer.invoke('run-optimization', settings)
+  runOptimization: (settings) => ipcRenderer.invoke('run-optimization', settings),
+  
+  // Обработчики событий
+  onSystemMetrics: (callback) => {
+    ipcRenderer.on('system-metrics', (_, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('system-metrics');
+  },
+  
+  onAdminRightsWarning: (callback) => {
+    ipcRenderer.on('admin-rights-warning', (_, data) => callback(data));
+    return () => ipcRenderer.removeAllListeners('admin-rights-warning');
+  }
 });

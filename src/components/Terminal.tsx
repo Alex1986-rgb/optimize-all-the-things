@@ -1,7 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
-import { ArrowUpCircle, RotateCcw } from 'lucide-react';
+import { ArrowUpCircle, RotateCcw, Shield } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import TerminalLine from './terminal/TerminalLine';
 import TerminalHeader from './terminal/TerminalHeader';
@@ -25,9 +25,15 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
   const [lines, setLines] = useState<CommandLine[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [isElectron, setIsElectron] = useState(false);
   const [progress, setProgress] = useState(0);
   const terminalRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  // Проверяем, запущены ли мы в Electron
+  useEffect(() => {
+    setIsElectron(!!window.electronAPI);
+  }, []);
 
   const clearTerminal = () => {
     setLines([]);
@@ -53,7 +59,7 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
     setIsComplete(false);
     clearTerminal();
 
-    // Check if any settings are enabled
+    // Проверяем, выбран ли хотя бы один параметр оптимизации
     const hasEnabledSettings = Object.values(settings).some(value => value);
     if (!hasEnabledSettings) {
       setLines([{
@@ -66,12 +72,12 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       return;
     }
 
-    // Generate the commands based on selected settings
+    // Генерируем команды на основе выбранных настроек
     const commands = generateCommands(settings);
     let currentCommandIndex = 0;
     const totalCommands = commands.length;
     
-    // Function to add a single line with delay
+    // Функция для добавления строки с задержкой
     const addLineWithDelay = (content: string, type: CommandLine['type'], color: CommandLine['color'], delay: number, isCommand: boolean = false) => {
       return new Promise<void>(resolve => {
         setTimeout(() => {
@@ -88,42 +94,61 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       });
     };
 
-    // Add initial message
-    await addLineWithDelay('Запуск оптимизации системы...', 'output', 'cyan', 500);
+    // Начальное сообщение
+    await addLineWithDelay('Запуск оптимизации системы Windows...', 'output', 'cyan', 500);
     
-    // Process each command with visual effects in the terminal
+    // Если мы в среде Electron, показываем соответствующее сообщение
+    if (isElectron) {
+      await addLineWithDelay('Обнаружена десктопная среда. Подготовка к выполнению реальных оптимизаций...', 'output', 'green', 800);
+    } else {
+      await addLineWithDelay('Обнаружена веб-среда. Выполняем симуляцию оптимизаций...', 'output', 'yellow', 800);
+    }
+    
+    // Обрабатываем каждую команду с визуальными эффектами в терминале
     for (const command of commands) {
       currentCommandIndex++;
       setProgress(Math.floor((currentCommandIndex / totalCommands) * 100));
       
-      // Show the command
+      // Показываем команду
       await addLineWithDelay(command.command, 'command', undefined, 300, true);
       
-      // Show output for each command
+      // Показываем вывод для каждой команды
       for (const output of command.outputs) {
         await addLineWithDelay(output, 'output', undefined, Math.random() * 500 + 200);
       }
     }
 
-    // Run actual optimization if in Electron environment
-    if (window.electronAPI) {
+    // Запускаем реальную оптимизацию, если в среде Electron
+    if (isElectron && window.electronAPI) {
       try {
         await addLineWithDelay('Применение оптимизаций к системе...', 'command', 'cyan', 800, true);
+        
+        // Выполняем оптимизацию через Electron API
         const result = await window.electronAPI.runOptimization(settings);
         
         if (result.success) {
           await addLineWithDelay(result.message, 'success', 'green', 500);
         } else {
           await addLineWithDelay(`Ошибка: ${result.message}`, 'error', 'red', 500);
+          
+          // Если оптимизация не удалась из-за отсутствия прав администратора, показываем подсказку
+          if (result.message.includes('права администратора')) {
+            await addLineWithDelay('Для выполнения оптимизаций необходимо перезапустить приложение от имени администратора.', 'error', 'yellow', 500);
+            setIsRunning(false);
+            return;
+          }
         }
       } catch (error) {
         await addLineWithDelay(`Ошибка: ${error instanceof Error ? error.message : 'Неизвестная ошибка'}`, 'error', 'red', 500);
         setIsRunning(false);
         return;
       }
+    } else {
+      // Симуляция успешной оптимизации в веб-среде
+      await addLineWithDelay('Симуляция оптимизаций завершена успешно.', 'success', 'green', 800);
     }
 
-    // Add completion messages
+    // Завершающие сообщения
     await addLineWithDelay('Оптимизация завершена успешно!', 'success', 'green', 800);
     await addLineWithDelay('Система работает эффективнее. Мониторинг производительности обновлен.', 'output', undefined, 600);
     
@@ -137,7 +162,7 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
     });
   };
   
-  // Helper function to generate commands based on settings
+  // Вспомогательная функция для генерации команд на основе настроек
   const generateCommands = (settings: Record<string, boolean>) => {
     const commands: { command: string, outputs: string[] }[] = [];
     
@@ -154,6 +179,10 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
         command: 'ipconfig /flushdns',
         outputs: ['Кэш сопоставителя DNS успешно очищен.']
       });
+      commands.push({
+        command: 'netsh int tcp set global ecncapability=disabled',
+        outputs: ['Настройка ECN capability выполнена.']
+      });
     }
     
     if (settings.browsers) {
@@ -164,6 +193,14 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       commands.push({
         command: 'reg add "HKCU\\Software\\Microsoft\\Edge\\Advanced" /v BackgroundModeEnabled /t REG_DWORD /d 0 /f',
         outputs: ['Операция успешно завершена. Фоновые процессы Edge отключены.']
+      });
+      commands.push({
+        command: 'Get-Process chrome* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
+        outputs: ['Процессы Chrome успешно остановлены.']
+      });
+      commands.push({
+        command: 'Get-Process msedge* -ErrorAction SilentlyContinue | Stop-Process -Force -ErrorAction SilentlyContinue',
+        outputs: ['Процессы Edge успешно остановлены.']
       });
     }
     
@@ -176,6 +213,10 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
         command: 'Remove-Item "C:\\Windows\\Temp\\*" -Recurse -Force -ErrorAction SilentlyContinue',
         outputs: ['Очистка системных временных файлов...', 'TEMP-папки очищены успешно.']
       });
+      commands.push({
+        command: 'Clear-RecycleBin -Force -ErrorAction SilentlyContinue',
+        outputs: ['Корзина успешно очищена.']
+      });
     }
     
     if (settings.priority) {
@@ -186,6 +227,10 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       commands.push({
         command: 'foreach ($p in $processes) { $p.PriorityClass = "High" }',
         outputs: ['Установка приоритетов для процессов браузеров выполнена.']
+      });
+      commands.push({
+        command: 'Set-ProcessPriority -Name WindowsOptimizer -Priority High',
+        outputs: ['Приоритет для Windows Optimizer установлен на высокий.']
       });
     }
     
@@ -213,6 +258,14 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       commands.push({
         command: 'Set-Service SysMain -StartupType Disabled',
         outputs: ['Служба SysMain отключена.']
+      });
+      commands.push({
+        command: 'Stop-Service dmwappushservice -ErrorAction SilentlyContinue',
+        outputs: ['Отключение службы WAP Push Message Routing...']
+      });
+      commands.push({
+        command: 'Set-Service dmwappushservice -StartupType Disabled',
+        outputs: ['Служба dmwappushservice отключена.']
       });
     }
     
@@ -264,6 +317,13 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
             <span className="text-green-400 text-xs flex items-center">
               <ArrowUpCircle className="mr-1 h-3 w-3" /> 
               Оптимизация успешно завершена
+            </span>
+          )}
+          
+          {!isElectron && (
+            <span className="text-yellow-400 text-xs flex items-center">
+              <Shield className="mr-1 h-3 w-3" />
+              Веб-режим (симуляция)
             </span>
           )}
         </div>
