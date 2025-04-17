@@ -93,7 +93,14 @@ const PerformanceMetrics: React.FC<PerformanceMetricsProps> = ({ optimizationCom
       
       // Основные обновления метрик
       const unsubscribe = window.electronAPI.onSystemMetrics((data) => {
-        setMetrics(data);
+        // Convert string values to numbers where appropriate
+        setMetrics({
+          cpu: parseFloat(data.cpu),
+          memory: parseFloat(data.memory),
+          temperature: parseFloat(data.temperature),
+          networkSpeed: data.networkSpeed,
+          timestamp: data.timestamp
+        });
       });
       
       return () => {

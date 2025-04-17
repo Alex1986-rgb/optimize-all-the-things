@@ -123,8 +123,20 @@ const Terminal: React.FC<TerminalProps> = ({ settings, onComplete, onReset }) =>
       try {
         await addLineWithDelay('Применение оптимизаций к системе...', 'command', 'cyan', 800, true);
         
+        // Convert generic Record to OptimizationSettings
+        const optimizationSettings: OptimizationSettings = {
+          cleanup: Boolean(settings.cleanup),
+          network: Boolean(settings.network),
+          browsers: Boolean(settings.browsers),
+          services: Boolean(settings.services),
+          priority: Boolean(settings.priority),
+          startup: Boolean(settings.startup),
+          gaming: Boolean(settings.gaming),
+          privacy: Boolean(settings.privacy)
+        };
+        
         // Выполняем оптимизацию через Electron API
-        const result = await window.electronAPI.runOptimization(settings);
+        const result = await window.electronAPI.runOptimization(optimizationSettings);
         
         if (result.success) {
           await addLineWithDelay(result.message, 'success', 'green', 500);

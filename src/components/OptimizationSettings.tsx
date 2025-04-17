@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { Settings, Network, BrowserIcon, Trash2, Power, Cpu, HardDrive, Gamepad2, Shield } from 'lucide-react';
+import { Settings, Network, Chrome, Trash2, Power, Cpu, HardDrive, Gamepad2, Shield } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -81,7 +80,7 @@ const OptimizationSettings: React.FC<OptimizationSettingsProps> = ({ onSettingsC
           id="browsers"
           label="Браузеры"
           description="Оптимизация Chrome, Edge, Firefox, Opera и Яндекс Браузер"
-          icon={BrowserIcon}
+          icon={Chrome}
         />
         <Separator className="my-2 bg-gray-800" />
         
